@@ -16,6 +16,7 @@
 #include "src/ui/ui.h"
 #include "src/time_manager.h"
 #include "src/radio_manager.h"
+#include "src/agenda_manager.h"
 
 int main(int argc, char *argv[])
 {
@@ -37,8 +38,9 @@ int main(int argc, char *argv[])
     lv_evdev_create(LV_INDEV_TYPE_POINTER, "/dev/input/event1");
 #endif
 
-    /* Initialize Time Manager (load settings) */
+    /* Initialize Time Manager (load settings) and Agenda */
     time_manager_init();
+    agenda_init();
     radio_init();
 
     /* Initialize UI modularly */
