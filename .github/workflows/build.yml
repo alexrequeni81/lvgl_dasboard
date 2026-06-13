@@ -24,26 +24,16 @@ jobs:
           sudo apt-get install -y \
             cmake ninja-build \
             gcc-i686-linux-gnu g++-i686-linux-gnu \
-            libc6-dev-i386-cross \
-            linux-libc-dev-i386-cross
+            libc6-dev-i386-cross
 
       - name: Configure CMake (cross-compile for i686)
         run: |
           cmake -B build_linux -S . \
             -G Ninja \
-            -DCMAKE_SYSTEM_NAME=Linux \
-            -DCMAKE_SYSTEM_PROCESSOR=i686 \
-            -DCMAKE_C_COMPILER=i686-linux-gnu-gcc \
-            -DCMAKE_CXX_COMPILER=i686-linux-gnu-g++ \
+            -DCMAKE_TOOLCHAIN_FILE=toolchain-i686-linux.cmake \
             -DCMAKE_BUILD_TYPE=MinSizeRel \
             -DLV_CONF_PATH="$(pwd)/lv_conf.h" \
-            -DCMAKE_C_FLAGS="-Os -fno-integrated-as" \
-            -DCMAKE_CXX_FLAGS="-Os -fno-integrated-as" \
-            -DCMAKE_EXE_LINKER_FLAGS="-static -L/usr/i686-linux-gnu/lib" \
-            -DCMAKE_FIND_ROOT_PATH=/usr/i686-linux-gnu \
-            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
-            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
-            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
+            -DCMAKE_EXE_LINKER_FLAGS="-static"
 
       - name: Build
         run: cmake --build build_linux --parallel $(nproc)
