@@ -1,0 +1,184 @@
+📟 Proyecto: Dashboard Industrial Atom N270 (AFL-08AH)
+Estado: ✅ Viable | Hardware: Intel Atom N270 (1.6GHz), 1-2GB RAM, GMA 950 | Pantalla: 8.4" 800x600
+
+Este documento detalla el stack tecnológico, configuración y arquitectura de software para convertir el panel industrial IEI AFL-08AH en un dashboard multifuncional de alto rendimiento, evitando la obsolescencia mediante optimización extrema.
+
+🛠️ 1. Stack Tecnológico Base
+Capa	Tecnología Seleccionada	Justificación Crítica
+Sistema Operativo	Tiny Core Linux (x86_32)	Núcleo de ~16MB. Carga total en RAM (toram), eliminando la lentitud de la CF original tras el arranque.
+Entorno Gráfico	Ninguno (Direct FB)	Sin X11, sin Wayland.  Renderizado directo sobre /dev/fb0 para ahorrar ~100MB de RAM y ciclos de CPU.
+Librería UI	LVGL (v8.3 o v9)	Diseñada para recursos limitados.  Renderizado por software altamente optimizado. Superior a Qt5/6 en este hardware.
+Lenguaje	C (GCC)	Máximo control de memoria y CPU. Sin overhead de intérpretes (Python/Node) que saturarían el N270.
+Audio	ALSA (aplay, mpg123)	Decodificación por procesos externos con prioridad baja (nice).
+Datos/Red	curl + cJSON	Peticiones HTTP ligeras y parseo JSON ultra-rápido (<10ms).
+
+🚀 2. Configuración del Sistema (Tiny Core)
+2.1. Parámetros de Arranque (Bootloader)
+Editar boot.cfg o isolinux.cfg en el medio de arranque para cargar el sistema en RAM y definir persistencia:
+
+vmlinuz quiet loglevel=3 tce=sda1 home=sda1 opt=sda1 toram
+
+toram: Copia todo el OS a la RAM. El sistema vuela tras el boot.
+home=/opt=sda1: Define persistencia en la tarjeta CF/SSD (asumiendo /mnt/sda1). 
+2.2. Extensiones Esenciales (.tcz)
+Instalar y listar en /opt/.filetool.lst y /opt/bootlocal.sh:
+
+# Compilación y Cabeceras
+compiletc.tcz
+linux-headers.tcz   # ¡Crítico! Debe coincidir con la versión del kernel exacta de TC
+
+# Gráficos y Sistema
+graphics-K<version>.tcz  # Drivers Intel 945GSE para framebuffer
+alsa-lib.tcz
+alsa-utils.tcz
+
+# Red y Datos
+wget.tcz   # O curl.tcz
+openssl.tcz
+ca-certificates.tcz
+
+# Audio (MP3 para radio, WAV para alarmas)
+mpg123.tcz
+
+2.3. Script de Inicio (/opt/bootlocal.sh)
+Automatiza la carga de módulos y configuración de audio de baja latencia:
+
+#!/bin/sh
+# Cargar extensiones críticas al inicio
+tce-load -wi alsa-lib.tcz alsa-utils.tcz mpg123.tcz curl.tcz openssl.tcz
+
+# Configuración de Audio para Atom N270 (Evitar resampleo por software)
+# Crear .asoundrc si no existe para forzar dmix a 44.1kHz nativo
+if [ ! -f /home/tc/.asoundrc ]; then
+    echo "defaults.pcm.dmix.rate 44100" > /home/tc/.asoundrc
+fi
+
+# Iniciar aplicación Dashboard (ejemplo)
+# Se lanza en tty1, sin gestor de ventanas
+# exec /home/tc/dashboard/bin/dashboard_app
+
+🎨 3. Implementación de la UI (LVGL)
+3.1. Inicialización Framebuffer
+Configuración crítica en lv_conf.h y main.c para evitar dependencias de X11. 
+
+lv_conf.h:
+
+#define LV_COLOR_DEPTH 16       // 16 bits (RGB565) es más rápido en GMA 950 que 32 bits
+#define LV_DISP_DEF_REFR_PERIOD 30 // 30ms (~33 FPS) suficiente y ahorra CPU
+#define LV_USE_LOG 1
+#define LV_LOG_LEVEL LV_LOG_LEVEL_WARN
+
+main.c (Esqueleto):
+
+#include "lvgl/lvgl.h"
+#include "lv_drivers/display/fbdev.h"
+#include <unistd.h>
+#include <pthread.h>
+#include <sys/time.h>
+
+#define DISP_BUF_SIZE (800 * 100) // Buffer parcial para ahorrar RAM
+
+int main(void) {
+    lv_init();
+    fbdev_init(); // Inicializa /dev/fb0
+
+    static lv_disp_draw_buf_t draw_buf;
+    static lv_color_t buf[DISP_BUF_SIZE];
+    lv_disp_draw_buf_init(&draw_buf, buf, NULL, DISP_BUF_SIZE);
+
+    static lv_disp_drv_t disp_drv;
+    lv_disp_drv_init(&disp_drv);
+    disp_drv.draw_buf = &draw_buf;
+    disp_drv.flush_cb = fbdev_flush;
+    disp_drv.hor_res = 800;
+    disp_drv.ver_res = 600;
+    lv_disp_drv_register(&disp_drv);
+
+    // --- Creación de UI (Ver Sección 4) ---
+    create_dashboard_tabs(); 
+
+    // Bucle principal
+    while(1) {
+        lv_timer_handler();
+        usleep(5000); // 5ms
+    }
+    return 0;
+}
+
+3.2. Arquitectura de Navegación
+Usar lv_tabview para contener todas las aplicaciones en una sola ventana, optimizando la memoria al solo renderizar la pestaña activa.
+
+Tab 1: Dashboard (Reloj, Clima, Estado Radio).
+Tab 2: Calendario (lv_calendar + Agenda JSON).
+Tab 3: Calculadora (lv_lib_100ask o custom). 
+Tab 4: Conversores (Divisas/Magnitudes).
+📦 4. Módulos de Funcionalidad
+4.1. Clima (Online)
+API: https://api.open-meteo.com/v1/forecast?latitude=XX&longitude=XX&current_weather=true (Sin Key, JSON ligero).
+Lógica:
+Hilo secundario o llamada no-bloqueante con curl.
+Parseo con cJSON.
+Actualización cada 15-30 min (no más, para no saturar red/CPU).
+Snippet Parseo JSON:
+
+cJSON *root = cJSON_Parse(json_buffer);
+cJSON *current = cJSON_GetObjectItem(root, "current_weather");
+cJSON *temp = cJSON_GetObjectItem(current, "temperature");
+if(cJSON_IsNumber(temp)) {
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%.1f C", temp->valuedouble);
+    lv_label_set_text(ui_weather_label, buf);
+}
+cJSON_Delete(root);
+
+4.2. Calendario y Agenda
+Widget: lv_calendar_create().
+Persistencia: Archivo /home/tc/agenda.json.
+{ "2026-06-05": "Revisión Sistema", "2026-06-10": "Mantenimiento" }
+
+Highlight: Al iniciar, leer JSON y usar lv_calendar_set_highlighted_dates(). 
+4.3. Calculadora
+Librería: Integrar lv_lib_100ask (módulo lv_100ask_calc).
+Ventaja: Ya resuelve la UI de botones y la lógica matemática básica. Ahorra semanas de desarrollo.
+Fuente: GitHub lv_lib_100ask.
+4.4. Conversor de Divisas
+API: https://api.frankfurter.app/latest (Open source, sin key).
+Estrategia: Descargar al inicio del día. Guardar en archivo local rates.json. Si no hay red, usar datos cacheados. 
+🔊 5. Gestión de Audio (Crítico para N270)
+El Atom N270 sufre con la decodificación de audio simultánea a gráficos. La clave es la priorización de procesos.
+
+5.1. Alarmas (Cada 5 min)
+Formato: WAV PCM 16-bit 44.1kHz (Sin compresión = 0% CPU de decodificación).
+Ejecución: aplay con prioridad baja.
+// En C
+if (alarm_trigger) {
+    // Nice 15: Prioridad muy baja. Si la UI necesita CPU, el audio cede.
+    system("nice -n 15 aplay -q /home/tc/sounds/alarm.wav &");
+}
+
+5.2. Radio Online
+Herramienta: mpg123 (El más eficiente para MP3 en x86 antiguo).
+Comando:
+nice -n 15 mpg123 --buffer 2048 -q "http://stream-url.mp3" &
+
+Nota: Si la UI va lenta, bajar el bitrate del stream a 32-48kbps. 
+
+💾 6. Persistencia y Almacenamiento
+Dado que Tiny Core corre en RAM:
+
+Backup: Configurar /opt/.filetool.lst para incluir:
+home/tc/agenda.json
+home/tc/settings.conf
+etc/wpa_supplicant.conf
+
+Comando de Guardado: Ejecutar filetool.sh -b antes de apagar o vía cron cada hora si hay cambios críticos.
+Hardware: Se recomienda encarecidamente reemplazar la CF original por una CF Industrial (SLC/MLC) o un adaptador CF-to-mSATA/SD de alta velocidad. La velocidad de escritura afecta directamente al tiempo de backup y boot. 
+💡 Comentarios Reveladores y Consejos "Pro"
+El Cuello de Botella Oculto (GMA 950): La gráfica integrada del N270 no tiene aceleración 3D moderna. No intentes usar OpenGL ni shaders en LVGL. Mantén todo en renderizado por software (CPU). Irónicamente, en este chip específico, forzar aceleración por hardware a veces es más lento debido a la sobrecarga de los drivers antiguos de Intel (i810/i915).
+Hyper-Threading Engañoso: El N270 muestra 2 CPUs lógicas, pero comparten la misma unidad de ejecución. No esperes un rendimiento dual-core real. Si un proceso de audio satura un "núcleo", el otro se verá afectado. Por eso es vital el uso de nice. 
+Compilación Cruzada: Compilar directamente en el N270 es lento (puede tardar 10-20 min en enlazar un proyecto grande).
+Truco: Desarrolla y compila en un PC moderno usando un entorno chroot o QEMU emulando i386 con las librerías de Tiny Core, y solo copia el binario final al panel. Ahorrarás horas de desarrollo.
+Cursor Molesto: Al usar framebuffer directo, es posible que veas el cursor de texto parpadeando.
+Solución: Añade vt.global_cursor_default=0 a la línea de comandos del kernel en el bootloader.
+Refrigeración: Aunque es "fanless", el panel está sellado. Si vas a tener la CPU al 100% (compilando o decodificando radio de alta calidad), monitoriza la temperatura. LVGL bien hecho no debería subir la temperatura notablemente (<40% CPU).
+

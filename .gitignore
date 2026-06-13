@@ -1,0 +1,38 @@
+# Build directories
+build/
+build2/
+build_win/
+build_linux/
+
+# Binary files and libraries
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.o
+*.obj
+
+# Archives
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# Local configuration and cache (to protect credentials)
+settings.conf
+weather_cache.json
+compile_err.txt
+output.log
+test.c
+test.exe
+test.o
+*.log
+
+# Editor-specific folders
+.vscode/
+.idea/
+.vs/
+*.suo
+*.user

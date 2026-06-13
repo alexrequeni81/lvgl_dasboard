@@ -1,0 +1,19 @@
+CC = gcc
+CFLAGS = -std=c99 -O2 -I. -Ilvgl -DLV_CONF_PATH="lv_conf.h"
+LDFLAGS = -lm -lpthread -lrt
+
+SRC = main.c src/cJSON.c src/net_manager.c src/radio_manager.c src/time_manager.c src/weather.c src/wifi_manager.c src/ui/ui.c src/ui/calendar_tab.c src/ui/calc_tab.c src/ui/conv_tab.c src/ui/dashboard_tab.c
+OBJ = $(SRC:.c=.o)
+
+.PHONY: all clean lvgl_lib
+
+all: dashboard_app
+
+dashboard_app: $(OBJ) lvgl/liblvgl.a
+	$(CC) $(CFLAGS) -o $@ $(OBJ) lvgl/liblvgl.a $(LDFLAGS)
+
+lvgl/liblvgl.a:
+	cd lvgl && cmake . -DCMAKE_BUILD_TYPE=MinSizeRel && make -j1
+
+clean:
+	rm -f $(OBJ) dashboard_app
