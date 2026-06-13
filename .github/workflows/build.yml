@@ -37,8 +37,10 @@ jobs:
             -DCMAKE_CXX_COMPILER=i686-linux-gnu-g++ \
             -DCMAKE_BUILD_TYPE=MinSizeRel \
             -DLV_CONF_PATH="$(pwd)/lv_conf.h" \
-            -DCMAKE_C_FLAGS="-Os" \
-            -DCMAKE_EXE_LINKER_FLAGS="-static" \
+            -DCMAKE_C_FLAGS="-Os -I/usr/i686-linux-gnu/include" \
+            -DCMAKE_CXX_FLAGS="-Os -I/usr/i686-linux-gnu/include" \
+            -DCMAKE_EXE_LINKER_FLAGS="-static -L/usr/i686-linux-gnu/lib" \
+            -DCMAKE_FIND_ROOT_PATH=/usr/i686-linux-gnu \
             -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
             -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
             -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
