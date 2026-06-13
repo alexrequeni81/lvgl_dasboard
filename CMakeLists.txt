@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(dashboard_app C)
+project(dashboard_app C ASM)
 
 set(CMAKE_C_STANDARD 99)
 
