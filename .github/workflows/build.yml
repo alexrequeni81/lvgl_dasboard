@@ -9,26 +9,47 @@ on:
 
 jobs:
   build-linux:
-    name: Cross-Compile to Linux i686 (musl-static)
+    name: Cross-Compile to Linux i686 (apt toolchain)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout code (including LVGL submodule)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Install build tools
+      - name: Install cross-compilation tools from apt
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake make build-essential tar curl
+          sudo apt-get install -y \
+            cmake ninja-build \
+            gcc-i686-linux-gnu \
+            g++-i686-linux-gnu
 
-      - name: Run compilation script
+      - name: Configure CMake (cross-compile for i686)
         run: |
-          chmod +x build_cross.sh
-          ./build_cross.sh
+          cmake -B build_linux -S . \
+            -G Ninja \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=i686 \
+            -DCMAKE_C_COMPILER=i686-linux-gnu-gcc \
+            -DCMAKE_CXX_COMPILER=i686-linux-gnu-g++ \
+            -DCMAKE_BUILD_TYPE=MinSizeRel \
+            -DLV_CONF_PATH="$(pwd)/lv_conf.h" \
+            -DCMAKE_C_FLAGS="-Os -DLV_CONF_PATH='$(pwd)/lv_conf.h'" \
+            -DCMAKE_EXE_LINKER_FLAGS="-static"
 
-      - name: Upload compiled binary
+      - name: Build
+        run: cmake --build build_linux --parallel $(nproc)
+
+      - name: Verify binary architecture
+        run: |
+          file build_linux/dashboard_app
+          ls -lh build_linux/dashboard_app
+
+      - name: Upload compiled binary as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dashboard_app
+          name: dashboard_app-linux-i686
           path: build_linux/dashboard_app
           if-no-files-found: error
