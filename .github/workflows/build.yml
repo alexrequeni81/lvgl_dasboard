@@ -23,8 +23,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             cmake ninja-build \
-            gcc-i686-linux-gnu \
-            g++-i686-linux-gnu
+            gcc-i686-linux-gnu g++-i686-linux-gnu \
+            libc6-dev-i386-cross \
+            linux-libc-dev-i386-cross
 
       - name: Configure CMake (cross-compile for i686)
         run: |
@@ -34,9 +35,14 @@ jobs:
             -DCMAKE_SYSTEM_PROCESSOR=i686 \
             -DCMAKE_C_COMPILER=i686-linux-gnu-gcc \
             -DCMAKE_CXX_COMPILER=i686-linux-gnu-g++ \
+            -DCMAKE_SYSROOT=/usr/i686-linux-gnu \
+            -DCMAKE_FIND_ROOT_PATH=/usr/i686-linux-gnu \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
             -DCMAKE_BUILD_TYPE=MinSizeRel \
             -DLV_CONF_PATH="$(pwd)/lv_conf.h" \
-            -DCMAKE_C_FLAGS="-Os -DLV_CONF_PATH='$(pwd)/lv_conf.h'" \
+            -DCMAKE_C_FLAGS="-Os" \
             -DCMAKE_EXE_LINKER_FLAGS="-static"
 
       - name: Build
