@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-linux:
-    name: Cross-Compile to Linux i686 (apt toolchain)
+    name: Cross-Compile to Linux i686 (direct gcc)
     runs-on: ubuntu-latest
 
     steps:
@@ -22,26 +22,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            cmake ninja-build \
-            gcc-i686-linux-gnu g++-i686-linux-gnu \
+            gcc-i686-linux-gnu \
             libc6-dev-i386-cross
 
-      - name: Configure CMake (cross-compile for i686)
-        run: |
-          cmake -B build_linux -S . \
-            -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE=toolchain-i686-linux.cmake \
-            -DCMAKE_BUILD_TYPE=MinSizeRel \
-            -DLV_CONF_PATH="$(pwd)/lv_conf.h" \
-            -DCMAKE_EXE_LINKER_FLAGS="-static"
-
-      - name: Build
-        run: cmake --build build_linux --parallel $(nproc)
-
-      - name: Verify binary architecture
-        run: |
-          file build_linux/dashboard_app
-          ls -lh build_linux/dashboard_app
+      - name: Cross-compile
+        run: bash build_cross.sh
 
       - name: Upload compiled binary as artifact
         uses: actions/upload-artifact@v4

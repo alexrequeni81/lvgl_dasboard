@@ -1,57 +1,64 @@
-#!/bin/sh
-# Build v1_dashboard for i686 Linux using musl.cc cross-compiler
-# Run from MSYS2 shell (C:\msys64\ucrt64\bin\bash.exe)
+#!/usr/bin/env bash
+set -euo pipefail
 
-set -e
+# Cross-compile dashboard_app for i686 Linux using the apt toolchain.
+# Usage: ./build_cross.sh
+# Output: build_linux/dashboard_app (statically linked)
 
-CROSS_DIR="/tmp/cross-i686"
-CROSS_URL="https://musl.cc/i686-linux-musl-cross.tgz"
-CROSS_TGZ="/tmp/i686-linux-musl-cross.tgz"
-SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
-BUILD_DIR="$SRC_DIR/build_linux"
+CC="${CC:-i686-linux-gnu-gcc}"
+AR="${AR:-i686-linux-gnu-ar}"
+BUILD_DIR="build_linux"
+NAME="dashboard_app"
 
-# 1. Download cross-compiler if not present
-if [ ! -f "$CROSS_DIR/bin/i686-linux-musl-gcc" ]; then
-    echo "==> Downloading i686-linux-musl cross-compiler..."
-    curl -L -o "$CROSS_TGZ" "$CROSS_URL"
-    echo "==> Extracting..."
-    mkdir -p "$CROSS_DIR"
-    tar -xzf "$CROSS_TGZ" -C "$CROSS_DIR" --strip-components=1
-    rm -f "$CROSS_TGZ"
-fi
+CFLAGS="-Os -std=c99 -DLV_CONF_PATH=$(pwd)/lv_conf.h -D__linux__"
+CFLAGS="$CFLAGS -I. -I./lvgl"
+LDFLAGS="-static -lm -lpthread -lrt"
 
-export PATH="$CROSS_DIR/bin:$PATH"
-export CC="i686-linux-musl-gcc"
-export CXX="i686-linux-musl-g++"
-export AR="i686-linux-musl-ar"
-export RANLIB="i686-linux-musl-ranlib"
+# Files to exclude from LVGL (platform-specific drivers and optional libs)
+EXCLUDE=(
+  lvgl/src/draw/sdl/
+  lvgl/src/drivers/sdl/
+  lvgl/src/drivers/windows/
+  lvgl/src/drivers/nuttx/
+  lvgl/src/drivers/libinput/
+  lvgl/src/drivers/x11/
+  lvgl/src/libs/freetype/
+  lvgl/src/libs/ffmpeg/
+  lvgl/src/libs/libjpeg_turbo/
+  lvgl/src/libs/libpng/
+  lvgl/src/libs/lodepng/
+  lvgl/src/libs/rlottie/
+  lvgl/src/libs/tiny_ttf/
+  lvgl/src/libs/bmp/
+  lvgl/src/libs/gif/
+  lvgl/src/libs/qrcode/
+  lvgl/src/libs/barcode/
+  lvgl/src/libs/fsdrv/
+  lvgl/src/others/
+)
 
-# 2. Build LVGL
-echo "==> Building LVGL..."
-cd "$SRC_DIR/lvgl"
-mkdir -p "$BUILD_DIR/lvgl"
-cd "$BUILD_DIR/lvgl"
-cmake "$SRC_DIR/lvgl" \
-    -DCMAKE_SYSTEM_NAME=Linux \
-    -DCMAKE_C_COMPILER="$CC" \
-    -DCMAKE_AR="$AR" \
-    -DCMAKE_RANLIB="$RANLIB" \
-    -DCMAKE_BUILD_TYPE=MinSizeRel \
-    -DLV_CONF_PATH="$SRC_DIR/lv_conf.h" \
-    -DCMAKE_C_FLAGS="-DLV_CONF_PATH=\"$SRC_DIR/lv_conf.h\""
-make -j$(nproc)
+echo "==> Compiling dashboard_app for i686 Linux..."
+mkdir -p "$BUILD_DIR"
 
-echo "==> Building dashboard..."
-cd "$BUILD_DIR"
-cmake "$SRC_DIR" \
-    -DCMAKE_SYSTEM_NAME=Linux \
-    -DCMAKE_C_COMPILER="$CC" \
-    -DCMAKE_AR="$AR" \
-    -DCMAKE_RANLIB="$RANLIB" \
-    -DCMAKE_BUILD_TYPE=MinSizeRel \
-    -DLV_CONF_PATH="$SRC_DIR/lv_conf.h" \
-    -DCMAKE_C_FLAGS="-static -DLV_CONF_PATH=\"$SRC_DIR/lv_conf.h\""
-make -j$(nproc)
+# Build the list of source files
+SRC=""
+SRC="$SRC main.c"
+SRC="$SRC $(find src -name '*.c')"
+SRC="$SRC $(find lvgl/src -name '*.c' | grep -vFf <(printf '%s\n' "${EXCLUDE[@]}") || true)"
 
-echo "==> Done! Binary at: $BUILD_DIR/dashboard_app"
-echo "==> Copy to target: scp $BUILD_DIR/dashboard_app tc@192.168.1.246:/home/tc/"
+OBJ=""
+for f in $SRC; do
+  o="$BUILD_DIR/${f//\//_}.o"
+  OBJ="$OBJ $o"
+  if [ ! -f "$o" ]; then
+    echo "  CC $f"
+    $CC $CFLAGS -c "$f" -o "$o"
+  fi
+done
+
+echo "  LD $NAME"
+$CC $LDFLAGS -o "$BUILD_DIR/$NAME" $OBJ
+
+echo "==> Done: $BUILD_DIR/$NAME"
+file "$BUILD_DIR/$NAME"
+ls -lh "$BUILD_DIR/$NAME"
