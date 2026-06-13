@@ -35,15 +35,13 @@ jobs:
             -DCMAKE_SYSTEM_PROCESSOR=i686 \
             -DCMAKE_C_COMPILER=i686-linux-gnu-gcc \
             -DCMAKE_CXX_COMPILER=i686-linux-gnu-g++ \
-            -DCMAKE_SYSROOT=/usr/i686-linux-gnu \
-            -DCMAKE_FIND_ROOT_PATH=/usr/i686-linux-gnu \
-            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
-            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
-            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
             -DCMAKE_BUILD_TYPE=MinSizeRel \
             -DLV_CONF_PATH="$(pwd)/lv_conf.h" \
             -DCMAKE_C_FLAGS="-Os" \
-            -DCMAKE_EXE_LINKER_FLAGS="-static"
+            -DCMAKE_EXE_LINKER_FLAGS="-static" \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
 
       - name: Build
         run: cmake --build build_linux --parallel $(nproc)
