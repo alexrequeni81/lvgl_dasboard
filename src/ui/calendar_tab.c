@@ -109,29 +109,12 @@ static void cancel_click_cb(lv_event_t * e)
     }
 }
 
-static void ta_event_cb(lv_event_t * e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    if(code == LV_EVENT_READY) {
-        lv_obj_t * ta = lv_event_get_target(e);
-        const char * text = lv_textarea_get_text(ta);
-        
-        agenda_set_event(g_selected_year, g_selected_month, g_selected_day, text);
-        update_calendar_highlights();
-        update_detail_panel();
-        
-        if(g_overlay_obj) {
-            lv_obj_delete(g_overlay_obj);
-            g_overlay_obj = NULL;
-        }
-    }
-}
 
 static void add_click_cb(lv_event_t * e)
 {
     (void)e;
-    
-    /* Create overlay */
+
+    /* Create fullscreen semi-transparent overlay as child of screen */
     g_overlay_obj = lv_obj_create(lv_screen_active());
     lv_obj_set_size(g_overlay_obj, 800, 600);
     lv_obj_set_pos(g_overlay_obj, 0, 0);
@@ -141,40 +124,38 @@ static void add_click_cb(lv_event_t * e)
     lv_obj_set_style_radius(g_overlay_obj, 0, 0);
     lv_obj_clear_flag(g_overlay_obj, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* Create modal card */
-    lv_obj_t * modal = ui_create_card(g_overlay_obj, 460, 210);
-    lv_obj_align(modal, LV_ALIGN_TOP_MID, 0, 60);
+    /* Modal card at top center — leaves room for keyboard at bottom */
+    lv_obj_t * modal = ui_create_card(g_overlay_obj, 480, 185);
+    lv_obj_set_pos(modal, (800 - 480) / 2, 10);
     lv_obj_set_layout(modal, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(modal, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(modal, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    /* Modal header */
+    /* Modal title */
     char title_buf[64];
-    snprintf(title_buf, sizeof(title_buf), "Evento para el %02d/%02d/%04d", g_selected_day, g_selected_month, g_selected_year);
+    snprintf(title_buf, sizeof(title_buf), "Evento — %02d/%02d/%04d",
+             g_selected_day, g_selected_month, g_selected_year);
     lv_obj_t * title = lv_label_create(modal);
     lv_label_set_text(title, title_buf);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(title, UI_COLOR_TEXT_MAIN, 0);
 
-    /* Text Area */
+    /* Text area */
     lv_obj_t * ta = lv_textarea_create(modal);
-    lv_obj_set_size(ta, 420, 70);
+    lv_obj_set_size(ta, 440, 70);
     lv_textarea_set_one_line(ta, false);
-    lv_textarea_set_placeholder_text(ta, "Escribe la descripción del evento...");
+    lv_textarea_set_placeholder_text(ta, "Escribe la descripcion del evento...");
     lv_obj_set_style_text_color(ta, UI_COLOR_TEXT_MAIN, 0);
     lv_obj_set_style_bg_color(ta, UI_COLOR_BG, 0);
     lv_obj_set_style_border_color(ta, UI_COLOR_CARD_BORDER, 0);
     lv_obj_set_style_text_font(ta, &lv_font_montserrat_14, 0);
-    lv_obj_add_event_cb(ta, ta_event_cb, LV_EVENT_READY, NULL);
 
     const char * cur_desc = agenda_get_event(g_selected_year, g_selected_month, g_selected_day);
-    if(cur_desc) {
-        lv_textarea_set_text(ta, cur_desc);
-    }
+    if(cur_desc) lv_textarea_set_text(ta, cur_desc);
 
     /* Buttons row */
     lv_obj_t * btn_box = lv_obj_create(modal);
-    lv_obj_set_size(btn_box, 420, 45);
+    lv_obj_set_size(btn_box, 440, 45);
     lv_obj_set_layout(btn_box, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(btn_box, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(btn_box, LV_FLEX_ALIGN_SPACE_AROUND, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -182,28 +163,38 @@ static void add_click_cb(lv_event_t * e)
     lv_obj_set_style_bg_opa(btn_box, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(btn_box, 0, 0);
 
-    /* Save button */
     lv_obj_t * btn_save = lv_button_create(btn_box);
-    lv_obj_set_size(btn_save, 140, 35);
+    lv_obj_set_size(btn_save, 150, 35);
     lv_obj_set_style_bg_color(btn_save, UI_COLOR_ACCENT, 0);
     lv_obj_t * lbl_save = lv_label_create(btn_save);
-    lv_label_set_text(lbl_save, "Guardar");
+    lv_label_set_text(lbl_save, LV_SYMBOL_OK " Guardar");
     lv_obj_set_style_text_font(lbl_save, &lv_font_montserrat_14, 0);
     lv_obj_align(lbl_save, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_save, save_click_cb, LV_EVENT_CLICKED, ta);
 
-    /* Cancel button */
     lv_obj_t * btn_cancel = lv_button_create(btn_box);
-    lv_obj_set_size(btn_cancel, 140, 35);
+    lv_obj_set_size(btn_cancel, 150, 35);
     lv_obj_set_style_bg_color(btn_cancel, UI_COLOR_CARD_BORDER, 0);
     lv_obj_t * lbl_cancel = lv_label_create(btn_cancel);
-    lv_label_set_text(lbl_cancel, "Cancelar");
+    lv_label_set_text(lbl_cancel, LV_SYMBOL_CLOSE " Cancelar");
     lv_obj_set_style_text_font(lbl_cancel, &lv_font_montserrat_14, 0);
     lv_obj_align(lbl_cancel, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_cancel, cancel_click_cb, LV_EVENT_CLICKED, NULL);
 
-    /* Open Keyboard */
-    ui_attach_keyboard(ta, LV_KEYBOARD_MODE_TEXT_LOWER);
+    /* Embed keyboard directly inside overlay (child of overlay, not screen)
+       so it gets automatically deleted when overlay is deleted.            */
+    lv_obj_t * kb = lv_keyboard_create(g_overlay_obj);
+    lv_keyboard_set_textarea(kb, ta);
+    lv_keyboard_set_mode(kb, LV_KEYBOARD_MODE_TEXT_LOWER);
+    lv_obj_set_size(kb, 800, 300);
+    lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_style_bg_color(kb, UI_COLOR_CARD, 0);
+    lv_obj_set_style_border_color(kb, UI_COLOR_CARD_BORDER, 0);
+    lv_obj_set_style_text_color(kb, UI_COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_radius(kb, 0, 0);
+    lv_obj_set_style_border_width(kb, 1, 0);
+    /* NOTE: no READY/CANCEL handlers on keyboard — modal lifecycle is
+       controlled exclusively by the Save / Cancel buttons above.       */
 }
 
 void calendar_tab_init(lv_obj_t * parent)
