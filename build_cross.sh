@@ -10,7 +10,7 @@ AR="${AR:-i686-linux-gnu-ar}"
 BUILD_DIR="build_linux"
 NAME="dashboard_app"
 
-CFLAGS="-Os -std=c99 -DLV_CONF_PATH=$(pwd)/lv_conf.h -D__linux__"
+CFLAGS="-Os -std=c99 -D_GNU_SOURCE -DLV_CONF_PATH=$(pwd)/lv_conf.h"
 CFLAGS="$CFLAGS -I. -I./lvgl"
 LDFLAGS="-static -lm -lpthread -lrt"
 
