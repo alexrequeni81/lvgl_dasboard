@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     lv_linux_fbdev_set_file(disp, "/dev/fb0");
 
     /* Touchscreen input */
-    lv_evdev_create(LV_INDEV_TYPE_POINTER, "/dev/input/event1");
+    lv_evdev_create(LV_INDEV_TYPE_POINTER, "/dev/input/event6");
 #endif
 
     /* Initialize Time Manager (load settings) and Agenda */
