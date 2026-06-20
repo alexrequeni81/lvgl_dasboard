@@ -29,7 +29,8 @@ static lv_obj_t * radio_now_label    = NULL;
 static lv_obj_t * radio_grid         = NULL;
 static lv_obj_t * radio_btns[RADIO_MAX_STATIONS];
 static lv_obj_t * radio_vol_label    = NULL;
-static lv_obj_t * radio_slider       = NULL;
+static lv_obj_t * radio_vol_down_btn = NULL;
+static lv_obj_t * radio_vol_up_btn   = NULL;
 static lv_obj_t * radio_stop_btn     = NULL;
 
 /* Per-slot alarm UI */
@@ -190,17 +191,21 @@ static void radio_btn_cb(lv_event_t * e)
     radio_toggle(idx);
 }
 
-/* ── Radio volume slider callback ── */
-static void radio_vol_cb(lv_event_t * e)
+/* ── Radio volume button callbacks ── */
+static void radio_vol_down_cb(lv_event_t * e)
 {
-    if(!radio_slider) return;
-    int vol = lv_slider_get_value(radio_slider);
+    (void)e;
+    int vol = g_radio_volume - 10;
+    if(vol < 0) vol = 0;
     radio_set_volume(vol);
-    if(radio_vol_label) {
-        char buf[16];
-        snprintf(buf, sizeof(buf), "Vol: %d%%", vol);
-        lv_label_set_text(radio_vol_label, buf);
-    }
+}
+
+static void radio_vol_up_cb(lv_event_t * e)
+{
+    (void)e;
+    int vol = g_radio_volume + 10;
+    if(vol > 100) vol = 100;
+    radio_set_volume(vol);
 }
 
 /* ── Radio stop button ── */
@@ -235,8 +240,6 @@ static void update_radio_display(void)
             lv_obj_set_style_bg_color(radio_btns[i], UI_COLOR_CARD_BORDER, 0);
     }
 
-    if(radio_slider)
-        lv_slider_set_value(radio_slider, g_radio_volume, LV_ANIM_OFF);
     if(radio_vol_label) {
         char buf[16];
         snprintf(buf, sizeof(buf), "Vol: %d%%", g_radio_volume);
@@ -1028,14 +1031,27 @@ void dashboard_tab_init(lv_obj_t * parent)
     lv_obj_set_style_text_color(radio_vol_label, UI_COLOR_TEXT_MUTED, 0);
     lv_obj_align(radio_vol_label, LV_ALIGN_TOP_LEFT, 8, vol_y);
 
-    radio_slider = lv_slider_create(card_r);
-    lv_obj_set_size(radio_slider, 280, 12);
-    lv_slider_set_value(radio_slider, g_radio_volume, LV_ANIM_OFF);
-    lv_obj_align_to(radio_slider, radio_vol_label, LV_ALIGN_OUT_RIGHT_MID, 12, 0);
-    lv_obj_set_style_bg_color(radio_slider, UI_COLOR_CARD_BORDER, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(radio_slider, UI_COLOR_ACCENT, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(radio_slider, UI_COLOR_ACCENT, LV_PART_KNOB);
-    lv_obj_add_event_cb(radio_slider, radio_vol_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    radio_vol_down_btn = lv_button_create(card_r);
+    lv_obj_set_size(radio_vol_down_btn, 48, 38);
+    lv_obj_set_style_bg_color(radio_vol_down_btn, UI_COLOR_CARD_BORDER, 0);
+    lv_obj_set_style_radius(radio_vol_down_btn, 6, 0);
+    lv_obj_align_to(radio_vol_down_btn, radio_vol_label, LV_ALIGN_OUT_RIGHT_MID, 12, 0);
+    lv_obj_t * down_lbl = lv_label_create(radio_vol_down_btn);
+    lv_label_set_text(down_lbl, LV_SYMBOL_MINUS);
+    lv_obj_set_style_text_font(down_lbl, &lv_font_montserrat_20, 0);
+    lv_obj_align(down_lbl, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(radio_vol_down_btn, radio_vol_down_cb, LV_EVENT_CLICKED, NULL);
+
+    radio_vol_up_btn = lv_button_create(card_r);
+    lv_obj_set_size(radio_vol_up_btn, 48, 38);
+    lv_obj_set_style_bg_color(radio_vol_up_btn, UI_COLOR_CARD_BORDER, 0);
+    lv_obj_set_style_radius(radio_vol_up_btn, 6, 0);
+    lv_obj_align_to(radio_vol_up_btn, radio_vol_down_btn, LV_ALIGN_OUT_RIGHT_MID, 8, 0);
+    lv_obj_t * up_lbl = lv_label_create(radio_vol_up_btn);
+    lv_label_set_text(up_lbl, LV_SYMBOL_PLUS);
+    lv_obj_set_style_text_font(up_lbl, &lv_font_montserrat_20, 0);
+    lv_obj_align(up_lbl, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_add_event_cb(radio_vol_up_btn, radio_vol_up_cb, LV_EVENT_CLICKED, NULL);
 
     radio_stop_btn = lv_button_create(card_r);
     lv_obj_set_size(radio_stop_btn, 90, 34);
