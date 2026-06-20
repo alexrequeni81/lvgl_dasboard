@@ -1,0 +1,96 @@
+diff --git a/env_support/cmake/custom.cmake b/env_support/cmake/custom.cmake
+index 9800468..43aa6a0 100644
+--- a/env_support/cmake/custom.cmake
++++ b/env_support/cmake/custom.cmake
+@@ -16,7 +16,11 @@ endif( LV_CONF_PATH )
+ option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+ 
+ # Set sources used for LVGL components
+-file(GLOB_RECURSE SOURCES ${LVGL_ROOT_DIR}/src/*.c ${LVGL_ROOT_DIR}/src/*.S)
++file(GLOB_RECURSE SOURCES ${LVGL_ROOT_DIR}/src/*.c)
++if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm|aarch64|ARM)")
++    file(GLOB_RECURSE ASM_SOURCES ${LVGL_ROOT_DIR}/src/*.S)
++    list(APPEND SOURCES ${ASM_SOURCES})
++endif()
+ file(GLOB_RECURSE EXAMPLE_SOURCES ${LVGL_ROOT_DIR}/examples/*.c)
+ file(GLOB_RECURSE DEMO_SOURCES ${LVGL_ROOT_DIR}/demos/*.c)
+ file(GLOB_RECURSE THORVG_SOURCES ${LVGL_ROOT_DIR}/src/libs/thorvg/*.cpp ${LVGL_ROOT_DIR}/src/others/vg_lite_tvg/*.cpp)
+diff --git a/src/core/lv_obj.c b/src/core/lv_obj.c
+index f05b538..c99fc55 100644
+--- a/src/core/lv_obj.c
++++ b/src/core/lv_obj.c
+@@ -363,6 +363,12 @@ static void lv_obj_destructor(const lv_obj_class_t * class_p, lv_obj_t * obj)
+     /*Remove the animations from this object*/
+     lv_anim_delete(obj, NULL);
+ 
++    /*Remove style transitions that reference this object.
++     *lv_anim_delete above only removes animations where a->var == obj,
++     *but transition animations have a->var == trans_t node, so they survive
++     *and leave dangling trans_t nodes with a freed tr->obj pointer.*/
++    _lv_obj_style_remove_transitions_for_obj(obj);
++
+     /*Delete from the group*/
+     lv_group_t * group = lv_obj_get_group(obj);
+     if(group) lv_group_remove_obj(obj);
+diff --git a/src/core/lv_obj_event.c b/src/core/lv_obj_event.c
+index 0553f3d..c8a84db 100644
+--- a/src/core/lv_obj_event.c
++++ b/src/core/lv_obj_event.c
+@@ -359,6 +359,11 @@ static lv_result_t event_send_core(lv_event_t * e)
+     res = lv_obj_event_base(NULL, e);
+     if(res != LV_RESULT_OK) return res;
+ 
++    /*Re-acquire list pointer in case it was invalidated during event processing*/
++    if(e->deleted) return LV_RESULT_INVALID;
++    target = e->current_target;
++    list = target->spec_attr ?  &target->spec_attr->event_list : NULL;
++
+     res = lv_event_send(list, e, false);
+     if(res != LV_RESULT_OK) return res;
+ 
+diff --git a/src/core/lv_obj_style.c b/src/core/lv_obj_style.c
+index 2273c0e..42ec111 100644
+--- a/src/core/lv_obj_style.c
++++ b/src/core/lv_obj_style.c
+@@ -825,6 +825,23 @@ static bool trans_delete(lv_obj_t * obj, lv_part_t part, lv_style_prop_t prop, t
+     return removed;
+ }
+ 
++void _lv_obj_style_remove_transitions_for_obj(lv_obj_t * obj)
++{
++    trans_t * tr;
++    trans_t * tr_prev;
++    tr = _lv_ll_get_tail(style_trans_ll_p);
++    while(tr != NULL) {
++        tr_prev = _lv_ll_get_prev(style_trans_ll_p, tr);
++
++        if(tr->obj == obj) {
++            lv_anim_delete(tr, NULL);
++            _lv_ll_remove(style_trans_ll_p, tr);
++            lv_free(tr);
++        }
++        tr = tr_prev;
++    }
++}
++
+ static void trans_anim_cb(void * _tr, int32_t v)
+ {
+     trans_t * tr = _tr;
+diff --git a/src/core/lv_obj_style.h b/src/core/lv_obj_style.h
+index 5663949..424a789 100644
+--- a/src/core/lv_obj_style.h
++++ b/src/core/lv_obj_style.h
+@@ -359,6 +359,13 @@ lv_opa_t lv_obj_get_style_opa_recursive(const lv_obj_t * obj, lv_part_t part);
+  */
+ void _lv_obj_update_layer_type(lv_obj_t * obj);
+ 
++/**
++ * Remove all style transitions for a given object.
++ * Called during object deletion to clean up dangling transition nodes.
++ * @param obj       the object whose transitions should be removed
++ */
++void _lv_obj_style_remove_transitions_for_obj(lv_obj_t * obj);
++
+ /**********************
+  *      MACROS
+  **********************/

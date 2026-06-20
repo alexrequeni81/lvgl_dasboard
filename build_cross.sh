@@ -37,6 +37,9 @@ EXCLUDE=(
   lvgl/src/others/
 )
 
+echo "==> Applying LVGL patches..."
+patch -d lvgl -p1 < patches/lvgl-fixes.patch || echo "Patch may already be applied, continuing..."
+
 echo "==> Compiling dashboard_app for i686 Linux..."
 mkdir -p "$BUILD_DIR"
 
