@@ -24,26 +24,26 @@ echo "[1/8] Instalando paquetes esenciales..."
 tce-load -wi curl ca-certificates
 tce-load -wi mpg123 alsa alsa-config alsa-modules-6.18.2-tinycore
 tce-load -wi ntpclient
-tce-load -wi inputattach
 tce-load -wi openssh
 
 # ── 2. ALSA ──
 echo "[2/8] Configurando ALSA..."
-sudo alsactl init 2>/dev/null || true
+alsactl init 2>/dev/null || true
 amixer sset Master 70% unmute 2>/dev/null
 amixer sset PCM 70% unmute 2>/dev/null
 amixer sset Surround 70% unmute 2>/dev/null
-sudo alsactl store
+alsactl store 2>/dev/null || sudo alsactl store 2>/dev/null || true
 echo "   Volumen ALSA configurado al 70%"
 
 # ── 3. Módulos de kernel ──
 echo "[3/8] Configurando módulos de kernel..."
-echo "serio_raw" >> /etc/sysconfig/optional-modules 2>/dev/null || true
-echo "snd-intel8x0" >> /etc/sysconfig/optional-modules 2>/dev/null || true
+echo "serio_raw" >> /etc/sysconfig/optional-modules 2>/dev/null || sudo sh -c 'echo "serio_raw" >> /etc/sysconfig/optional-modules' 2>/dev/null || true
+echo "snd-intel8x0" >> /etc/sysconfig/optional-modules 2>/dev/null || sudo sh -c 'echo "snd-intel8x0" >> /etc/sysconfig/optional-modules' 2>/dev/null || true
 
 # ── 4. bootlocal.sh optimizado ──
 echo "[4/8] Creando /opt/bootlocal.sh..."
-cat > /opt/bootlocal.sh << 'EOF'
+BOOTLOCAL="/opt/bootlocal.sh"
+cat > /tmp/bootlocal.sh << 'BOOTEOF'
 #!/bin/sh
 # bootlocal.sh — Arranque del panel dashboard
 
@@ -80,8 +80,10 @@ alsactl store >/dev/null 2>&1
 # Dashboard (esperar a que red/táctil estén listos)
 sleep 5
 /home/tc/dashboard_app </dev/null >/dev/null 2>&1 &
-EOF
-chmod +x /opt/bootlocal.sh
+BOOTEOF
+cp /tmp/bootlocal.sh /opt/bootlocal.sh 2>/dev/null || sudo cp /tmp/bootlocal.sh /opt/bootlocal.sh 2>/dev/null
+chmod +x /opt/bootlocal.sh 2>/dev/null || sudo chmod +x /opt/bootlocal.sh 2>/dev/null
+rm -f /tmp/bootlocal.sh
 echo "   Creado /opt/bootlocal.sh"
 
 # ── 5. Descargar última versión de la app (si no existe) ──
@@ -107,7 +109,7 @@ fi
 
 # ── 6. Guardar configuración persistente ──
 echo "[6/8] Guardando configuración persistente..."
-filetool.sh -b
+filetool.sh -b 2>/dev/null || sudo filetool.sh -b 2>/dev/null || true
 
 echo ""
 echo "=== Setup completado ==="
