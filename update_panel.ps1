@@ -22,17 +22,18 @@ if (!$bin) {
     exit 1
 }
 
-Write-Host "==> Subiendo a $Panel..." -ForegroundColor Cyan
+Write-Host "==> Matando app en el panel..." -ForegroundColor Cyan
+ssh $Panel "killall dashboard_app 2>/dev/null; sleep 1; echo '[OK] Detenida'"
+
+Write-Host "==> Subiendo nuevo binario a $Panel..." -ForegroundColor Cyan
 scp $bin.FullName "${Panel}:/home/tc/dashboard_app"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: SCP fallo" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "==> Actualizando y reiniciando en el panel..." -ForegroundColor Cyan
+Write-Host "==> Reiniciando en el panel..." -ForegroundColor Cyan
 ssh $Panel @'
-    killall dashboard_app 2>/dev/null
-    cp /home/tc/dashboard_app /home/tc/dashboard_app.bak
     chmod +x /home/tc/dashboard_app
     nohup /home/tc/dashboard_app </dev/null >/dev/null 2>&1 &
     echo "[OK] App reiniciada"
