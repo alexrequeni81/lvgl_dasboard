@@ -1038,7 +1038,7 @@ void dashboard_tab_init(lv_obj_t * parent)
     lv_obj_align_to(radio_vol_down_btn, radio_vol_label, LV_ALIGN_OUT_RIGHT_MID, 12, 0);
     lv_obj_t * down_lbl = lv_label_create(radio_vol_down_btn);
     lv_label_set_text(down_lbl, LV_SYMBOL_MINUS);
-    lv_obj_set_style_text_font(down_lbl, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(down_lbl, font_for_size(20), 0);
     lv_obj_align(down_lbl, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(radio_vol_down_btn, radio_vol_down_cb, LV_EVENT_CLICKED, NULL);
 
@@ -1049,7 +1049,7 @@ void dashboard_tab_init(lv_obj_t * parent)
     lv_obj_align_to(radio_vol_up_btn, radio_vol_down_btn, LV_ALIGN_OUT_RIGHT_MID, 8, 0);
     lv_obj_t * up_lbl = lv_label_create(radio_vol_up_btn);
     lv_label_set_text(up_lbl, LV_SYMBOL_PLUS);
-    lv_obj_set_style_text_font(up_lbl, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(up_lbl, font_for_size(20), 0);
     lv_obj_align(up_lbl, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(radio_vol_up_btn, radio_vol_up_cb, LV_EVENT_CLICKED, NULL);
 
