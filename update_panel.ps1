@@ -29,12 +29,13 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "==> Actualizando en el panel..." -ForegroundColor Cyan
+Write-Host "==> Actualizando y reiniciando en el panel..." -ForegroundColor Cyan
 ssh $Panel @'
     killall dashboard_app 2>/dev/null
     cp /home/tc/dashboard_app /home/tc/dashboard_app.bak
     chmod +x /home/tc/dashboard_app
-    echo "[OK] Actualizado. Ejecuta: /home/tc/dashboard_app"
+    nohup /home/tc/dashboard_app </dev/null >/dev/null 2>&1 &
+    echo "[OK] App reiniciada"
 '@
 
 Write-Host "==> Listo!" -ForegroundColor Green
