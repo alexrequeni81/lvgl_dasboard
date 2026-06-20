@@ -17,13 +17,15 @@ endif()
 set(LV_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lv_conf.h" CACHE STRING "LV_CONF_PATH")
 add_subdirectory(lvgl)
 
+# Add SDL2 include path for lvgl SDL driver (only the SDL2 subdirectory, not MSYS2 root)
+if(WIN32)
+    target_include_directories(lvgl PRIVATE "C:/msys64/ucrt64/include/SDL2")
+endif()
+
 # Include paths
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
-if(WIN32)
-    include_directories(${SDL2_INCLUDE_DIRS})
-endif()
 
 # Sources
 file(GLOB_RECURSE SRC_FILES "src/*.c")

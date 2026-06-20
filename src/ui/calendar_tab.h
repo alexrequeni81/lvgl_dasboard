@@ -4,5 +4,7 @@
 #include "lvgl/lvgl.h"
 
 void calendar_tab_init(lv_obj_t * parent);
+void calendar_tab_test_edit(void);
+void calendar_tab_test_stress(int iterations);
 
 #endif /* CALENDAR_TAB_H */

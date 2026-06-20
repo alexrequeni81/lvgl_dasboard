@@ -42,6 +42,8 @@
 
 /* ── Features ── */
 #define LV_USE_LOG 1
+/* Use TRACE for crash debugging, INFO for normal operation */
 #define LV_LOG_LEVEL LV_LOG_LEVEL_INFO
+#define LV_LOG_PRINTF 1
 
 #endif /*LV_CONF_H*/

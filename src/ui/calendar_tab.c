@@ -4,6 +4,11 @@
 #include <time.h>
 #include <stdio.h>
 
+#ifdef _WIN32
+#include LV_SDL_INCLUDE_PATH
+void _lv_sdl_mouse_handler(SDL_Event * event);
+#endif
+
 /* ── Static UI Handles ── */
 static lv_obj_t * g_calendar_obj      = NULL;
 static lv_obj_t * g_date_label        = NULL;
@@ -113,9 +118,19 @@ static void cancel_click_cb(lv_event_t * e)
 static void add_click_cb(lv_event_t * e)
 {
     (void)e;
+    printf("[add_click] ENTERED\n"); fflush(stdout);
+
+    /* Safety guard: refuse double creation */
+    if(g_overlay_obj != NULL) {
+        printf("[add_click] GUARD: overlay already exists, returning\n"); fflush(stdout);
+        return;
+    }
+
+    printf("[add_click] step 0: before create overlay\n"); fflush(stdout);
 
     /* Create fullscreen semi-transparent overlay as child of screen */
     g_overlay_obj = lv_obj_create(lv_screen_active());
+    printf("[add_click] step 1: overlay=%p\n", (void*)g_overlay_obj); fflush(stdout);
     lv_obj_set_size(g_overlay_obj, 800, 600);
     lv_obj_set_pos(g_overlay_obj, 0, 0);
     lv_obj_set_style_bg_color(g_overlay_obj, lv_color_black(), 0);
@@ -126,6 +141,7 @@ static void add_click_cb(lv_event_t * e)
 
     /* Modal card at top center — leaves room for keyboard at bottom */
     lv_obj_t * modal = ui_create_card(g_overlay_obj, 480, 185);
+    printf("[add_click] step 2: modal=%p\n", (void*)modal); fflush(stdout);
     lv_obj_set_pos(modal, (800 - 480) / 2, 10);
     lv_obj_set_layout(modal, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(modal, LV_FLEX_FLOW_COLUMN);
@@ -136,12 +152,14 @@ static void add_click_cb(lv_event_t * e)
     snprintf(title_buf, sizeof(title_buf), "Evento — %02d/%02d/%04d",
              g_selected_day, g_selected_month, g_selected_year);
     lv_obj_t * title = lv_label_create(modal);
+    printf("[add_click] step 3: title=%p\n", (void*)title); fflush(stdout);
     lv_label_set_text(title, title_buf);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(title, UI_COLOR_TEXT_MAIN, 0);
 
     /* Text area */
     lv_obj_t * ta = lv_textarea_create(modal);
+    printf("[add_click] step 4: ta=%p\n", (void*)ta); fflush(stdout);
     lv_obj_set_size(ta, 440, 70);
     lv_textarea_set_one_line(ta, false);
     lv_textarea_set_placeholder_text(ta, "Escribe la descripcion del evento...");
@@ -155,6 +173,7 @@ static void add_click_cb(lv_event_t * e)
 
     /* Buttons row */
     lv_obj_t * btn_box = lv_obj_create(modal);
+    printf("[add_click] step 5: btn_box=%p\n", (void*)btn_box); fflush(stdout);
     lv_obj_set_size(btn_box, 440, 45);
     lv_obj_set_layout(btn_box, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(btn_box, LV_FLEX_FLOW_ROW);
@@ -164,18 +183,22 @@ static void add_click_cb(lv_event_t * e)
     lv_obj_set_style_border_width(btn_box, 0, 0);
 
     lv_obj_t * btn_save = lv_button_create(btn_box);
+    printf("[add_click] step 6: btn_save=%p\n", (void*)btn_save); fflush(stdout);
     lv_obj_set_size(btn_save, 150, 35);
     lv_obj_set_style_bg_color(btn_save, UI_COLOR_ACCENT, 0);
     lv_obj_t * lbl_save = lv_label_create(btn_save);
+    printf("[add_click] step 7: lbl_save=%p\n", (void*)lbl_save); fflush(stdout);
     lv_label_set_text(lbl_save, LV_SYMBOL_OK " Guardar");
     lv_obj_set_style_text_font(lbl_save, &lv_font_montserrat_14, 0);
     lv_obj_align(lbl_save, LV_ALIGN_CENTER, 0, 0);
     lv_obj_add_event_cb(btn_save, save_click_cb, LV_EVENT_CLICKED, ta);
 
     lv_obj_t * btn_cancel = lv_button_create(btn_box);
+    printf("[add_click] step 8: btn_cancel=%p\n", (void*)btn_cancel); fflush(stdout);
     lv_obj_set_size(btn_cancel, 150, 35);
     lv_obj_set_style_bg_color(btn_cancel, UI_COLOR_CARD_BORDER, 0);
     lv_obj_t * lbl_cancel = lv_label_create(btn_cancel);
+    printf("[add_click] step 9: lbl_cancel=%p\n", (void*)lbl_cancel); fflush(stdout);
     lv_label_set_text(lbl_cancel, LV_SYMBOL_CLOSE " Cancelar");
     lv_obj_set_style_text_font(lbl_cancel, &lv_font_montserrat_14, 0);
     lv_obj_align(lbl_cancel, LV_ALIGN_CENTER, 0, 0);
@@ -183,9 +206,11 @@ static void add_click_cb(lv_event_t * e)
 
     /* Embed keyboard directly inside overlay (child of overlay, not screen)
        so it gets automatically deleted when overlay is deleted.            */
+    printf("[add_click] step 10: before keyboard create\n"); fflush(stdout);
+#if 1
+    printf("[add_click] step 11: creating keyboard...\n"); fflush(stdout);
     lv_obj_t * kb = lv_keyboard_create(g_overlay_obj);
-    lv_keyboard_set_textarea(kb, ta);
-    lv_keyboard_set_mode(kb, LV_KEYBOARD_MODE_TEXT_LOWER);
+    printf("[add_click] step 12: kb=%p created\n", (void*)kb); fflush(stdout);
     lv_obj_set_size(kb, 800, 300);
     lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_style_bg_color(kb, UI_COLOR_CARD, 0);
@@ -193,8 +218,82 @@ static void add_click_cb(lv_event_t * e)
     lv_obj_set_style_text_color(kb, UI_COLOR_TEXT_MAIN, 0);
     lv_obj_set_style_radius(kb, 0, 0);
     lv_obj_set_style_border_width(kb, 1, 0);
+    printf("[add_click] step 13: configuring mode\n"); fflush(stdout);
+    lv_keyboard_set_mode(kb, LV_KEYBOARD_MODE_TEXT_LOWER);
+    printf("[add_click] step 14: setting textarea\n"); fflush(stdout);
+    lv_keyboard_set_textarea(kb, ta);
+    printf("[add_click] step 15: keyboard done\n"); fflush(stdout);
+#else
+    printf("[add_click] step 11: keyboard SKIPPED\n"); fflush(stdout);
+#endif
+    printf("[add_click] step 16: done\n"); fflush(stdout);
     /* NOTE: no READY/CANCEL handlers on keyboard — modal lifecycle is
        controlled exclusively by the Save / Cancel buttons above.       */
+}
+
+void calendar_tab_test_edit(void)
+{
+    printf("[calendar_test] g_calendar=%p g_add=%p g_overlay=%p\n",
+           (void*)g_calendar_obj, (void*)g_btn_add, (void*)g_overlay_obj); fflush(stdout);
+    if(!g_btn_add) return;
+    /* Send full event chain matching real mouse click */
+    printf("[calendar_test] Sending PRESSED...\n"); fflush(stdout);
+    lv_result_t res = lv_obj_send_event(g_btn_add, LV_EVENT_PRESSED, NULL);
+    printf("[calendar_test] PRESSED done res=%d\n", (int)res); fflush(stdout);
+    res = lv_obj_send_event(g_btn_add, LV_EVENT_RELEASED, NULL);
+    printf("[calendar_test] RELEASED done res=%d\n", (int)res); fflush(stdout);
+    res = lv_obj_send_event(g_btn_add, LV_EVENT_SHORT_CLICKED, NULL);
+    printf("[calendar_test] SHORT_CLICKED done res=%d\n", (int)res); fflush(stdout);
+    res = lv_obj_send_event(g_btn_add, LV_EVENT_CLICKED, NULL);
+    printf("[calendar_test] CLICKED done res=%d, g_overlay=%p\n", (int)res, (void*)g_overlay_obj); fflush(stdout);
+}
+
+void calendar_tab_test_stress(int iterations)
+{
+    for(int i = 0; i < iterations; i++) {
+        printf("[stress] === iteration %d ===\n", i); fflush(stdout);
+
+        /* Open edit modal */
+        if(!g_btn_add) { printf("[stress] btn_add is NULL\n"); fflush(stdout); return; }
+        printf("[stress] CLICKED on Editar...\n"); fflush(stdout);
+        lv_obj_send_event(g_btn_add, LV_EVENT_CLICKED, NULL);
+        printf("[stress] after CLICKED, g_overlay=%p\n", (void*)g_overlay_obj); fflush(stdout);
+        if(!g_overlay_obj) { printf("[stress] overlay not created!\n"); fflush(stdout); return; }
+
+        /* Find modal child objects */
+        lv_obj_t * modal = lv_obj_get_child(g_overlay_obj, 0);
+        lv_obj_t * btn_box = lv_obj_get_child(modal, 2);
+        lv_obj_t * save_btn = lv_obj_get_child(btn_box, 0);
+        lv_obj_t * cancel_btn = lv_obj_get_child(btn_box, 1);
+        if(!save_btn) { printf("[stress] save_btn not found\n"); fflush(stdout); return; }
+        if(!cancel_btn) { printf("[stress] cancel_btn not found\n"); fflush(stdout); return; }
+
+        /* Send CLICKED on save (saves data, deletes overlay) */
+        printf("[stress] CLICKED on save_btn...\n"); fflush(stdout);
+        lv_obj_send_event(save_btn, LV_EVENT_CLICKED, NULL);
+        printf("[stress] after save CLICKED, g_overlay=%p\n", (void*)g_overlay_obj); fflush(stdout);
+
+        /* Re-open overlay */
+        printf("[stress] re-open overlay...\n"); fflush(stdout);
+        lv_obj_send_event(g_btn_add, LV_EVENT_CLICKED, NULL);
+        printf("[stress] re-opened g_overlay=%p\n", (void*)g_overlay_obj); fflush(stdout);
+        if(!g_overlay_obj) { printf("[stress] overlay not created (2nd time)!\n"); fflush(stdout); return; }
+
+        /* Find new cancel_btn after recreation */
+        modal = lv_obj_get_child(g_overlay_obj, 0);
+        btn_box = lv_obj_get_child(modal, 2);
+        cancel_btn = lv_obj_get_child(btn_box, 1);
+        if(!cancel_btn) { printf("[stress] cancel_btn not found (2nd)\n"); fflush(stdout); return; }
+
+        /* Use PRESSED+CLICKED on cancel_btn to test transition cleanup */
+        printf("[stress] cancel_btn PRESSED...\n"); fflush(stdout);
+        lv_obj_send_event(cancel_btn, LV_EVENT_PRESSED, NULL);
+        printf("[stress] cancel_btn after PRESSED\n"); fflush(stdout);
+        lv_obj_send_event(cancel_btn, LV_EVENT_CLICKED, NULL);
+        printf("[stress] after cancel CLICKED, g_overlay=%p\n", (void*)g_overlay_obj); fflush(stdout);
+        if(g_overlay_obj) { printf("[stress] overlay not deleted after Cancel!\n"); fflush(stdout); return; }
+    }
+    printf("[stress] All %d iterations passed!\n", iterations); fflush(stdout);
 }
 
 void calendar_tab_init(lv_obj_t * parent)
