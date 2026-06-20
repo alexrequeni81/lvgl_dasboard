@@ -10,6 +10,7 @@
 #endif
 
 #ifdef __linux__
+#include <time.h>
 #include "lvgl/src/drivers/display/fb/lv_linux_fbdev.h"
 #include "lvgl/src/drivers/evdev/lv_evdev.h"
 #endif
@@ -44,6 +45,13 @@ int main(int argc, char *argv[])
     /* Linux: framebuffer + evdev touch */
     lv_display_t * disp = lv_linux_fbdev_create();
     lv_linux_fbdev_set_file(disp, "/dev/fb0");
+
+    /* Sync system clock via NTP (non-blocking) */
+    system("ntpclient -h pool.ntp.org -s >/dev/null 2>&1 &");
+
+    /* Set timezone to Europe/Madrid if not already set */
+    setenv("TZ", "Europe/Madrid", 0);
+    tzset();
 
     /* Touchscreen input */
     lv_indev_t * touch = lv_evdev_create(LV_INDEV_TYPE_POINTER, "/dev/input/event6");
