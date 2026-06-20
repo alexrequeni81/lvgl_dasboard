@@ -156,8 +156,8 @@ void radio_set_volume(int vol)
         radio_play(idx);
     }
 #else
-    char cmd[64];
-    snprintf(cmd, sizeof(cmd), "amixer set PCM %d%% >/dev/null 2>&1", vol);
+    char cmd[96];
+    snprintf(cmd, sizeof(cmd), "amixer set Master %d%% unmute >/dev/null 2>&1; amixer set PCM %d%% unmute >/dev/null 2>&1", vol, vol);
     system(cmd);
 #endif
     printf("[radio] Volumen: %d%%\n", vol);

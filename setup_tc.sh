@@ -49,8 +49,8 @@ cat > /tmp/bootlocal.sh << 'BOOTEOF'
 
 export TZ=Europe/Madrid
 
-# Red (Ethernet)
-udhcpc -i eth0 -b >/dev/null 2>&1 &
+# Red (Ethernet) — auto-detect interfaz
+udhcpc -b >/dev/null 2>&1
 
 # Táctil PenMount (puerto serie ttyS3)
 modprobe serio_raw 2>/dev/null
@@ -70,15 +70,22 @@ echo "root:root" | chpasswd
 echo "tc:root" | chpasswd
 /usr/local/etc/init.d/openssh start &
 
-# Sincronizar hora por NTP
-ntpclient -h pool.ntp.org -s >/dev/null 2>&1 &
+# Esperar a que la red esté activa antes de NTP
+for i in 1 2 3 4 5; do
+    ping -c 1 -W 2 pool.ntp.org >/dev/null 2>&1 && break
+    sleep 2
+done
 
-# Volumen ALSA
+# Sincronizar hora por NTP (síncrono, espera resultado)
+ntpclient -h pool.ntp.org -s >/dev/null 2>&1
+
+# Volumen ALSA (Master y PCM)
+amixer sset Master 70% unmute >/dev/null 2>&1
 amixer sset PCM 70% unmute >/dev/null 2>&1
 alsactl store >/dev/null 2>&1
 
-# Dashboard (esperar a que red/táctil estén listos)
-sleep 5
+# Dashboard — espera breve y lanza
+sleep 2
 /home/tc/dashboard_app </dev/null >/dev/null 2>&1 &
 BOOTEOF
 cp /tmp/bootlocal.sh /opt/bootlocal.sh 2>/dev/null || sudo cp /tmp/bootlocal.sh /opt/bootlocal.sh 2>/dev/null
