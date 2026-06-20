@@ -20,6 +20,7 @@
 #include "src/time_manager.h"
 #include "src/radio_manager.h"
 #include "src/agenda_manager.h"
+#include "src/weather.h"
 
 static void test_edit_timer_cb(lv_timer_t * t)
 {
@@ -49,7 +50,7 @@ int main(int argc, char *argv[])
     /* Sync system clock via NTP (non-blocking) */
     system("ntpclient -h pool.ntp.org -s >/dev/null 2>&1 &");
 
-    /* Set timezone to Europe/Madrid if not already set */
+    /* Timezone default, will be overridden by geo-IP if available */
     setenv("TZ", "Europe/Madrid", 0);
     tzset();
 
@@ -62,6 +63,9 @@ int main(int argc, char *argv[])
     time_manager_init();
     agenda_init();
     radio_init();
+
+    /* Auto-detect location via geo-IP (sets lat/lon/city/timezone) */
+    weather_auto_detect();
 
     /* Initialize UI modularly */
     ui_init();

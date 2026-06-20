@@ -26,6 +26,7 @@ extern char  g_weather_last_error[128];
 extern bool  g_weather_last_ok;
 
 void weather_init(void);
+bool weather_auto_detect(void);
 bool weather_update(void);
 void weather_load_settings(void);
 void weather_save_settings(void);

@@ -296,6 +296,45 @@ bool weather_update(void)
     return true;
 }
 
+bool weather_auto_detect(void)
+{
+    char resp[4096];
+    if(!net_http_get("http://ip-api.com/json/?fields=city,lat,lon,timezone,countryCode", resp, sizeof(resp))) {
+        printf("[weather] Auto-detect failed (no network)\n");
+        return false;
+    }
+
+    cJSON * root = cJSON_Parse(resp);
+    if(!root) {
+        printf("[weather] Auto-detect: invalid JSON\n");
+        return false;
+    }
+
+    cJSON * city   = cJSON_GetObjectItem(root, "city");
+    cJSON * lat    = cJSON_GetObjectItem(root, "lat");
+    cJSON * lon    = cJSON_GetObjectItem(root, "lon");
+    cJSON * tz     = cJSON_GetObjectItem(root, "timezone");
+    cJSON * cc     = cJSON_GetObjectItem(root, "countryCode");
+
+    if(cJSON_IsNumber(lat)) g_weather_lat = (float)lat->valuedouble;
+    if(cJSON_IsNumber(lon)) g_weather_lon = (float)lon->valuedouble;
+    if(cJSON_IsString(cc))  strncpy(g_weather_country, cc->valuestring, sizeof(g_weather_country) - 1);
+    if(cJSON_IsString(city)) strncpy(g_weather.city_name, city->valuestring, sizeof(g_weather.city_name) - 1);
+
+    if(cJSON_IsString(tz)) {
+        setenv("TZ", tz->valuestring, 1);
+        tzset();
+        printf("[weather] Timezone set to %s\n", tz->valuestring);
+    }
+
+    weather_save_settings();
+    printf("[weather] Auto-detect: %s, %.4f, %.4f (%s)\n",
+           g_weather.city_name, g_weather_lat, g_weather_lon, g_weather_country);
+
+    cJSON_Delete(root);
+    return true;
+}
+
 void weather_init(void)
 {
     weather_load_settings();
